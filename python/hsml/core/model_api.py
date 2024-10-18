@@ -82,12 +82,12 @@ class ModelApi:
         return model_meta
 
     def get_models(
-        self,
-        name,
-        model_registry_id,
-        shared_registry_project_name=None,
-        metric=None,
-        direction=None,
+            self,
+            name,
+            model_registry_id,
+            shared_registry_project_name=None,
+            metric=None,
+            direction=None,
     ):
         """Get the metadata of models based on the name or optionally the best model given a metric and direction.
 
@@ -255,7 +255,7 @@ class ModelApi:
             "links",
         ]
         query_params = {
-            "expand": "provenance_artifacts",
+            "expand": ["provenance_artifacts", "query", "features", "transformationfunctions"],
             "upstreamLvls": 2,
             "downstreamLvls": 0,
         }
