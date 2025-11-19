@@ -177,6 +177,12 @@ class FeatureStore:
         feature_group_object = self._feature_group_api.get(self.id, name, version)
         if feature_group_object:
             feature_group_object.feature_store = self
+            if feature_group_object.missing_mandatory_tags:
+                tag_names = [tag.get("name", str(tag)) for tag in feature_group_object.missing_mandatory_tags]
+                warnings.warn(
+                    f"Missing mandatory tags: {tag_names}",
+                    stacklevel=1,
+                )
         return feature_group_object
 
     def get_feature_groups(
@@ -302,6 +308,12 @@ class FeatureStore:
         )
         if feature_group_object:
             feature_group_object.feature_store = self
+            if feature_group_object.missing_mandatory_tags:
+                tag_names = [tag.get("name", str(tag)) for tag in feature_group_object.missing_mandatory_tags]
+                warnings.warn(
+                    f"Missing mandatory tags: {tag_names}",
+                    stacklevel=1,
+                )
         return feature_group_object
 
     @usage.method_logger
@@ -404,7 +416,14 @@ class FeatureStore:
                 stacklevel=1,
             )
             version = self.DEFAULT_VERSION
-        return self._training_dataset_api.get(name, version)
+        training_dataset_object = self._training_dataset_api.get(name, version)
+        if training_dataset_object and training_dataset_object.missing_mandatory_tags:
+            tag_names = [tag.get("name", str(tag)) for tag in training_dataset_object.missing_mandatory_tags]
+            warnings.warn(
+                f"Missing mandatory tags: {tag_names}",
+                stacklevel=1,
+            )
+        return training_dataset_object
 
     def get_training_datasets(
         self, name: str
@@ -1903,7 +1922,14 @@ class FeatureStore:
                 stacklevel=1,
             )
             version = self.DEFAULT_VERSION
-        return self._feature_view_engine.get(name, version)
+        feature_view_object = self._feature_view_engine.get(name, version)
+        if feature_view_object and feature_view_object.missing_mandatory_tags:
+            tag_names = [tag.get("name", str(tag)) for tag in feature_view_object.missing_mandatory_tags]
+            warnings.warn(
+                f"Missing mandatory tags: {tag_names}",
+                stacklevel=1,
+            )
+        return feature_view_object
 
     @usage.method_logger
     def get_feature_views(self, name: str) -> List[feature_view.FeatureView]:

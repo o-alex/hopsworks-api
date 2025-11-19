@@ -80,6 +80,7 @@ class TrainingDatasetBase:
         train_split=None,
         time_split_size=None,
         extra_filter=None,
+        missing_mandatory_tags=None,
         **kwargs,
     ):
         self._name = name
@@ -98,6 +99,7 @@ class TrainingDatasetBase:
         self._seed = seed
         self._location = location
         self._train_split = train_split
+        self._missing_mandatory_tags = missing_mandatory_tags or []
 
         if training_dataset_type:
             self.training_dataset_type = training_dataset_type
@@ -275,6 +277,11 @@ class TrainingDatasetBase:
     @version.setter
     def version(self, version: int) -> None:
         self._version = version
+
+    @property
+    def missing_mandatory_tags(self) -> List[Dict[str, Any]]:
+        """List of missing mandatory tags for the training dataset."""
+        return self._missing_mandatory_tags
 
     @property
     def description(self) -> Optional[str]:
@@ -545,6 +552,7 @@ class TrainingDataset(TrainingDatasetBase):
         train_split=None,
         time_split_size=None,
         extra_filter=None,
+        missing_mandatory_tags=None,
         **kwargs,
     ):
         super().__init__(
@@ -576,6 +584,7 @@ class TrainingDataset(TrainingDatasetBase):
             train_split=train_split,
             time_split_size=time_split_size,
             extra_filter=extra_filter,
+            missing_mandatory_tags=missing_mandatory_tags,
         )
 
         self._id = id

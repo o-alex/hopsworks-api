@@ -157,6 +157,7 @@ class FeatureGroupBase:
         ttl: Optional[Union[int, float, timedelta]] = None,
         ttl_enabled: Optional[bool] = None,
         online_disk: Optional[bool] = None,
+        missing_mandatory_tags: Optional[List[Dict[str, Any]]] = None,
         **kwargs,
     ) -> None:
         """Initialize a feature group object.
@@ -201,6 +202,7 @@ class FeatureGroupBase:
         self._alert_api = alerts_api.AlertsApi()
         self.ttl = ttl
         self._ttl_enabled = ttl_enabled if ttl_enabled is not None else ttl is not None
+        self._missing_mandatory_tags = missing_mandatory_tags or []
 
         if storage_connector is not None and isinstance(storage_connector, dict):
             self._storage_connector = sc.StorageConnector.from_response_json(
@@ -1972,6 +1974,11 @@ class FeatureGroupBase:
     def version(self, version: int) -> None:
         self._version = version
 
+    @property
+    def missing_mandatory_tags(self) -> List[Dict[str, Any]]:
+        """List of missing mandatory tags for the feature group."""
+        return self._missing_mandatory_tags
+
     def get_fg_name(self) -> str:
         return f"{self.name}_{self.version}"
 
@@ -2628,6 +2635,7 @@ class FeatureGroup(FeatureGroupBase):
         ttl: Optional[Union[int, float, timedelta]] = None,
         ttl_enabled: Optional[bool] = None,
         online_disk: Optional[bool] = None,
+        missing_mandatory_tags: Optional[List[Dict[str, Any]]] = None,
         **kwargs,
     ) -> None:
         super().__init__(
@@ -2650,6 +2658,7 @@ class FeatureGroup(FeatureGroupBase):
             ttl=ttl,
             ttl_enabled=ttl_enabled,
             online_disk=online_disk,
+            missing_mandatory_tags=missing_mandatory_tags,
         )
 
         self._feature_store_name: Optional[str] = featurestore_name
@@ -4328,6 +4337,7 @@ class ExternalFeatureGroup(FeatureGroupBase):
         ttl: Optional[Union[int, float, timedelta]] = None,
         ttl_enabled: Optional[bool] = None,
         online_disk: Optional[bool] = None,
+        missing_mandatory_tags: Optional[List[Dict[str, Any]]] = None,
         **kwargs,
     ) -> None:
         super().__init__(
@@ -4350,6 +4360,7 @@ class ExternalFeatureGroup(FeatureGroupBase):
             ttl=ttl,
             ttl_enabled=ttl_enabled,
             online_disk=online_disk,
+            missing_mandatory_tags=missing_mandatory_tags,
         )
 
         self._feature_store_name = featurestore_name
@@ -4865,6 +4876,7 @@ class SpineGroup(FeatureGroupBase):
             ]
         ] = None,
         online_disk: Optional[bool] = None,
+        missing_mandatory_tags: Optional[List[Dict[str, Any]]] = None,
         **kwargs,
     ) -> None:
         super().__init__(
@@ -4882,6 +4894,7 @@ class SpineGroup(FeatureGroupBase):
             online_config=online_config,
             data_source=data_source,
             online_disk=online_disk,
+            missing_mandatory_tags=missing_mandatory_tags,
         )
 
         self._feature_store_name = featurestore_name

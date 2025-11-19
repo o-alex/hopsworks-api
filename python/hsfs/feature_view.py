@@ -134,6 +134,7 @@ class FeatureView:
         featurestore_name: Optional[str] = None,
         serving_keys: Optional[List[skm.ServingKey]] = None,
         logging_enabled: Optional[bool] = False,
+        missing_mandatory_tags: Optional[List[Dict[str, Any]]] = None,
         **kwargs,
     ) -> None:
         self._name = name
@@ -204,6 +205,7 @@ class FeatureView:
         self._logging_enabled = logging_enabled
         self._feature_logging = None
         self._alert_api = alerts_api.AlertsApi()
+        self._missing_mandatory_tags = missing_mandatory_tags or []
 
         if self._id:
             self._init_feature_monitoring_engine()
@@ -2798,6 +2800,12 @@ class FeatureView:
             transformation_context=transformation_context,
         )
         self.update_last_accessed_training_dataset(td.version)
+        if td.missing_mandatory_tags:
+            tag_names = [tag.get("name", str(tag)) for tag in td.missing_mandatory_tags]
+            warnings.warn(
+                f"Missing mandatory tags: {tag_names}",
+                stacklevel=1,
+            )
         return df
 
     @usage.method_logger
@@ -2974,7 +2982,15 @@ class FeatureView:
         # Raises
             `hopsworks.client.exceptions.RestAPIError`: If the backend encounters an error when handling the request
         """
-        return self._feature_view_engine.get_training_datasets(self)
+        tds = self._feature_view_engine.get_training_datasets(self)
+        for td in tds:
+            if td.missing_mandatory_tags:
+                tag_names = [tag.get("name", str(tag)) for tag in td.missing_mandatory_tags]
+                warnings.warn(
+                    f"Training dataset '{td.name}' version {td.version} has missing mandatory tags: {tag_names}",
+                    stacklevel=1,
+                )
+        return tds
 
     @usage.method_logger
     def get_training_dataset_statistics(
@@ -3591,6 +3607,7 @@ class FeatureView:
             featurestore_name=json_decamelized.get("featurestore_name", None),
             serving_keys=serving_keys,
             logging_enabled=json_decamelized.get("logging_enabled", False),
+            missing_mandatory_tags=json_decamelized.get("missing_mandatory_tags", None),
             transformation_functions=[
                 TransformationFunction.from_response_json(
                     {
@@ -4088,6 +4105,11 @@ class FeatureView:
     @version.setter
     def version(self, version: int) -> None:
         self._version = version
+
+    @property
+    def missing_mandatory_tags(self) -> List[Dict[str, Any]]:
+        """List of missing mandatory tags for the feature view."""
+        return self._missing_mandatory_tags
 
     @property
     def labels(self) -> List[str]:
