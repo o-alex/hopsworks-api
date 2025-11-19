@@ -23,7 +23,7 @@ import pandas as pd
 from hopsworks_common import client
 from hopsworks_common.client.exceptions import RestAPIError
 from hopsworks_common.core.constants import HAS_NUMPY
-from hsfs import engine, training_dataset_feature, util
+from hsfs import engine, tag, training_dataset_feature, util
 from hsfs.constructor import filter, query
 from hsfs.core import (
     statistics_engine,
@@ -80,6 +80,7 @@ class TrainingDatasetBase:
         train_split=None,
         time_split_size=None,
         extra_filter=None,
+        missing_mandatory_tags=None,
         **kwargs,
     ):
         self._name = name
@@ -98,6 +99,7 @@ class TrainingDatasetBase:
         self._seed = seed
         self._location = location
         self._train_split = train_split
+        self._missing_mandatory_tags = missing_mandatory_tags or []
 
         if training_dataset_type:
             self.training_dataset_type = training_dataset_type
@@ -275,6 +277,11 @@ class TrainingDatasetBase:
     @version.setter
     def version(self, version: int) -> None:
         self._version = version
+
+    @property
+    def missing_mandatory_tags(self) -> List[Dict[str, Any]]:
+        """List of missing mandatory tags for the training dataset."""
+        return self._missing_mandatory_tags
 
     @property
     def description(self) -> Optional[str]:
@@ -545,8 +552,11 @@ class TrainingDataset(TrainingDatasetBase):
         train_split=None,
         time_split_size=None,
         extra_filter=None,
+        missing_mandatory_tags=None,
+        tags=None,
         **kwargs,
     ):
+        self._tags: Optional[List[tag.Tag]] = tags or []
         super().__init__(
             name,
             version,
@@ -576,6 +586,7 @@ class TrainingDataset(TrainingDatasetBase):
             train_split=train_split,
             time_split_size=time_split_size,
             extra_filter=extra_filter,
+            missing_mandatory_tags=missing_mandatory_tags,
         )
 
         self._id = id
@@ -875,6 +886,8 @@ class TrainingDataset(TrainingDatasetBase):
                 td.pop("type")
                 td.pop("href")
                 cls._rewrite_location(td)
+                if "tags" in td and td["tags"]:
+                    td["tags"] = tag.Tag.from_response_json(td["tags"])
                 tds.append(cls(**td))
             return tds
         else:  # backwards compatibility
@@ -889,6 +902,10 @@ class TrainingDataset(TrainingDatasetBase):
         json_decamelized.pop("type", None)
         json_decamelized.pop("href", None)
         cls._rewrite_location(json_decamelized)
+        if "tags" in json_decamelized and json_decamelized["tags"]:
+            json_decamelized["tags"] = tag.Tag.from_response_json(
+                json_decamelized["tags"]
+            )
         return cls(**json_decamelized)
 
     def update_from_response_json(self, json_dict):
@@ -896,6 +913,10 @@ class TrainingDataset(TrainingDatasetBase):
         _ = json_decamelized.pop("type")
         # here we lose the information that the user set, e.g. write_options
         self._rewrite_location(json_decamelized)
+        if "tags" in json_decamelized and json_decamelized["tags"]:
+            json_decamelized["tags"] = tag.Tag.from_response_json(
+                json_decamelized["tags"]
+            )
         self.__init__(**json_decamelized)
         return self
 
@@ -916,7 +937,7 @@ class TrainingDataset(TrainingDatasetBase):
         return json.dumps(self, cls=util.Encoder)
 
     def to_dict(self):
-        return {
+        td_dict = {
             "name": self._name,
             "version": self._version,
             "description": self._description,
@@ -936,6 +957,10 @@ class TrainingDataset(TrainingDatasetBase):
             "extraFilter": self._extra_filter,
             "type": "trainingDatasetDTO",
         }
+        tags_dict = tag.Tag.tags_to_dict(self._tags)
+        if tags_dict:
+            td_dict["tags"] = tags_dict
+        return td_dict
 
     @property
     def id(self):

@@ -157,6 +157,7 @@ class FeatureGroupBase:
         ttl: Optional[Union[int, float, timedelta]] = None,
         ttl_enabled: Optional[bool] = None,
         online_disk: Optional[bool] = None,
+        missing_mandatory_tags: Optional[List[Dict[str, Any]]] = None,
         **kwargs,
     ) -> None:
         """Initialize a feature group object.
@@ -201,6 +202,7 @@ class FeatureGroupBase:
         self._alert_api = alerts_api.AlertsApi()
         self.ttl = ttl
         self._ttl_enabled = ttl_enabled if ttl_enabled is not None else ttl is not None
+        self._missing_mandatory_tags = missing_mandatory_tags or []
 
         if storage_connector is not None and isinstance(storage_connector, dict):
             self._storage_connector = sc.StorageConnector.from_response_json(
@@ -1972,6 +1974,11 @@ class FeatureGroupBase:
     def version(self, version: int) -> None:
         self._version = version
 
+    @property
+    def missing_mandatory_tags(self) -> List[Dict[str, Any]]:
+        """List of missing mandatory tags for the feature group."""
+        return self._missing_mandatory_tags
+
     def get_fg_name(self) -> str:
         return f"{self.name}_{self.version}"
 
@@ -2628,6 +2635,8 @@ class FeatureGroup(FeatureGroupBase):
         ttl: Optional[Union[int, float, timedelta]] = None,
         ttl_enabled: Optional[bool] = None,
         online_disk: Optional[bool] = None,
+        missing_mandatory_tags: Optional[List[Dict[str, Any]]] = None,
+        tags: Optional[List[tag.Tag]] = None,
         **kwargs,
     ) -> None:
         super().__init__(
@@ -2650,6 +2659,7 @@ class FeatureGroup(FeatureGroupBase):
             ttl=ttl,
             ttl_enabled=ttl_enabled,
             online_disk=online_disk,
+            missing_mandatory_tags=missing_mandatory_tags,
         )
 
         self._feature_store_name: Optional[str] = featurestore_name
@@ -2669,6 +2679,7 @@ class FeatureGroup(FeatureGroupBase):
         self._stream = stream
         self._parents = parents
         self._deltastreamer_jobconf = delta_streamer_job_conf
+        self._tags: Optional[List[tag.Tag]] = tags or []
 
         self._materialization_job: "Job" = None
 
@@ -3983,6 +3994,10 @@ class FeatureGroup(FeatureGroupBase):
                 json_decamelized["embedding_index"] = EmbeddingIndex.from_response_json(
                     json_decamelized["embedding_index"]
                 )
+            if "tags" in json_decamelized and json_decamelized["tags"]:
+                json_decamelized["tags"] = tag.Tag.from_response_json(
+                    json_decamelized["tags"]
+                )
             if "transformation_functions" in json_decamelized:
                 transformation_functions = json_decamelized["transformation_functions"]
                 json_decamelized["transformation_functions"] = [
@@ -4098,6 +4113,9 @@ class FeatureGroup(FeatureGroupBase):
             fg_meta_dict["deltaStreamerJobConf"] = self._deltastreamer_jobconf
         if self._storage_connector:
             fg_meta_dict["storageConnector"] = self._storage_connector.to_dict()
+        tags_dict = tag.Tag.tags_to_dict(self._tags)
+        if tags_dict:
+            fg_meta_dict["tags"] = tags_dict
         return fg_meta_dict
 
     def _get_table_name(self) -> str:
@@ -4328,6 +4346,7 @@ class ExternalFeatureGroup(FeatureGroupBase):
         ttl: Optional[Union[int, float, timedelta]] = None,
         ttl_enabled: Optional[bool] = None,
         online_disk: Optional[bool] = None,
+        missing_mandatory_tags: Optional[List[Dict[str, Any]]] = None,
         **kwargs,
     ) -> None:
         super().__init__(
@@ -4350,6 +4369,7 @@ class ExternalFeatureGroup(FeatureGroupBase):
             ttl=ttl,
             ttl_enabled=ttl_enabled,
             online_disk=online_disk,
+            missing_mandatory_tags=missing_mandatory_tags,
         )
 
         self._feature_store_name = featurestore_name
@@ -4865,6 +4885,7 @@ class SpineGroup(FeatureGroupBase):
             ]
         ] = None,
         online_disk: Optional[bool] = None,
+        missing_mandatory_tags: Optional[List[Dict[str, Any]]] = None,
         **kwargs,
     ) -> None:
         super().__init__(
@@ -4882,6 +4903,7 @@ class SpineGroup(FeatureGroupBase):
             online_config=online_config,
             data_source=data_source,
             online_disk=online_disk,
+            missing_mandatory_tags=missing_mandatory_tags,
         )
 
         self._feature_store_name = featurestore_name

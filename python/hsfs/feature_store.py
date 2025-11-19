@@ -30,6 +30,7 @@ from hsfs import (
     feature_group,
     feature_view,
     storage_connector,
+    tag,
     training_dataset,
     usage,
     util,
@@ -177,6 +178,12 @@ class FeatureStore:
         feature_group_object = self._feature_group_api.get(self.id, name, version)
         if feature_group_object:
             feature_group_object.feature_store = self
+            if feature_group_object.missing_mandatory_tags:
+                tag_names = [tag.get("name", str(tag)) for tag in feature_group_object.missing_mandatory_tags]
+                warnings.warn(
+                    f"Missing mandatory tags: {tag_names}",
+                    stacklevel=1,
+                )
         return feature_group_object
 
     def get_feature_groups(
@@ -302,6 +309,12 @@ class FeatureStore:
         )
         if feature_group_object:
             feature_group_object.feature_store = self
+            if feature_group_object.missing_mandatory_tags:
+                tag_names = [tag.get("name", str(tag)) for tag in feature_group_object.missing_mandatory_tags]
+                warnings.warn(
+                    f"Missing mandatory tags: {tag_names}",
+                    stacklevel=1,
+                )
         return feature_group_object
 
     @usage.method_logger
@@ -404,7 +417,14 @@ class FeatureStore:
                 stacklevel=1,
             )
             version = self.DEFAULT_VERSION
-        return self._training_dataset_api.get(name, version)
+        training_dataset_object = self._training_dataset_api.get(name, version)
+        if training_dataset_object and training_dataset_object.missing_mandatory_tags:
+            tag_names = [tag.get("name", str(tag)) for tag in training_dataset_object.missing_mandatory_tags]
+            warnings.warn(
+                f"Missing mandatory tags: {tag_names}",
+                stacklevel=1,
+            )
+        return training_dataset_object
 
     def get_training_datasets(
         self, name: str
@@ -518,6 +538,26 @@ class FeatureStore:
         """
         return self._storage_connector_api.get_online_connector(self._id)
 
+    def _normalize_tags(
+        self,
+        tags: Optional[
+            Union[
+                tag.Tag,
+                Dict[str, Any],
+                List[Union[tag.Tag, Dict[str, Any]]],
+            ]
+        ],
+    ) -> List[tag.Tag]:
+        """Normalize tags input to a list of Tag objects.
+
+        # Arguments
+            tags: Tags in various formats (single Tag, dict, or list of Tags/dicts)
+
+        # Returns
+            `List[Tag]`: List of Tag objects
+        """
+        return tag.Tag.normalize(tags)
+
     @usage.method_logger
     def create_feature_group(
         self,
@@ -567,6 +607,13 @@ class FeatureStore:
         ttl: Optional[Union[int, float, timedelta]] = None,
         ttl_enabled: Optional[bool] = None,
         online_disk: Optional[bool] = None,
+        tags: Optional[
+            Union[
+                tag.Tag,
+                Dict[str, Any],
+                List[Union[tag.Tag, Dict[str, Any]]],
+            ]
+        ] = None,
     ) -> feature_group.FeatureGroup:
         """Create a feature group metadata object.
 
@@ -690,9 +737,17 @@ class FeatureStore:
             online_disk: Optionally, specify online data storage for this feature group.
                 When set to True data will be stored on disk, instead of in memory. Overrides online_config.table_space.
                 Defaults to using cluster wide configuration 'featurestore_online_tablespace' to identify tablespace for disk storage.
+            tags: Optionally, define tags for the feature group. Tags can be provided as:
+                - A single Tag object
+                - A dictionary with 'name' and 'value' keys (e.g., {"name": "tag1", "value": "value1"})
+                - A list of Tag objects
+                - A list of dictionaries with 'name' and 'value' keys
+                Tags will be attached to the feature group after it is saved. Defaults to None.
         # Returns
             `FeatureGroup`. The feature group metadata object.
         """
+        normalized_tags = self._normalize_tags(tags)
+
         if not data_source:
             data_source = ds.DataSource(path=path)
         feature_group_object = feature_group.FeatureGroup(
@@ -724,6 +779,7 @@ class FeatureStore:
             ttl=ttl,
             ttl_enabled=ttl_enabled,
             online_disk=online_disk,
+            tags=normalized_tags,
         )
         feature_group_object.feature_store = self
         return feature_group_object
@@ -1409,6 +1465,13 @@ class FeatureStore:
         label: Optional[List[str]] = None,
         transformation_functions: Optional[Dict[str, TransformationFunction]] = None,
         train_split: str = None,
+        tags: Optional[
+            Union[
+                tag.Tag,
+                Dict[str, Any],
+                List[Union[tag.Tag, Dict[str, Any]]],
+            ]
+        ] = None,
     ) -> "training_dataset.TrainingDataset":
         """Create a training dataset metadata object.
 
@@ -1481,10 +1544,18 @@ class FeatureStore:
             train_split: If `splits` is set, provide the name of the split that is going
                 to be used for training. The statistics of this split will be used for
                 transformation functions if necessary. Defaults to `None`.
+            tags: Optionally, define tags for the training dataset. Tags can be provided as:
+                - A single Tag object
+                - A dictionary with 'name' and 'value' keys (e.g., {"name": "tag1", "value": "value1"})
+                - A list of Tag objects
+                - A list of dictionaries with 'name' and 'value' keys
+                Tags will be attached to the training dataset after it is saved. Defaults to None.
 
         # Returns:
             `TrainingDataset`: The training dataset metadata object.
         """
+        normalized_tags = self._normalize_tags(tags)
+
         return training_dataset.TrainingDataset(
             name=name,
             version=version,
@@ -1500,6 +1571,7 @@ class FeatureStore:
             coalesce=coalesce,
             transformation_functions=transformation_functions or {},
             train_split=train_split,
+            tags=normalized_tags,
         )
 
     @usage.method_logger
@@ -1676,6 +1748,13 @@ class FeatureStore:
             List[Union[TransformationFunction, HopsworksUdf]]
         ] = None,
         logging_enabled: Optional[bool] = False,
+        tags: Optional[
+            Union[
+                tag.Tag,
+                Dict[str, Any],
+                List[Union[tag.Tag, Dict[str, Any]]],
+            ]
+        ] = None,
     ) -> feature_view.FeatureView:
         """Create a feature view metadata object and saved it to hopsworks.
 
@@ -1764,10 +1843,18 @@ class FeatureStore:
             transformation_functions: Model Dependent Transformation functions attached to the feature view.
                 It can be a list of list of user defined functions defined using the hopsworks `@udf` decorator.
                 Defaults to `None`, no transformations.
+            tags: Optionally, define tags for the feature view. Tags can be provided as:
+                - A single Tag object
+                - A dictionary with 'name' and 'value' keys (e.g., {"name": "tag1", "value": "value1"})
+                - A list of Tag objects
+                - A list of dictionaries with 'name' and 'value' keys
+                Tags will be attached to the feature view after it is saved. Defaults to None.
 
         # Returns:
             `FeatureView`: The feature view metadata object.
         """
+        normalized_tags = self._normalize_tags(tags)
+
         feat_view = feature_view.FeatureView(
             name=name,
             query=query,
@@ -1780,6 +1867,7 @@ class FeatureStore:
             transformation_functions=transformation_functions or {},
             featurestore_name=self._name,
             logging_enabled=logging_enabled,
+            tags=normalized_tags,
         )
         return self._feature_view_engine.save(feat_view)
 
@@ -1903,7 +1991,14 @@ class FeatureStore:
                 stacklevel=1,
             )
             version = self.DEFAULT_VERSION
-        return self._feature_view_engine.get(name, version)
+        feature_view_object = self._feature_view_engine.get(name, version)
+        if feature_view_object and feature_view_object.missing_mandatory_tags:
+            tag_names = [tag.get("name", str(tag)) for tag in feature_view_object.missing_mandatory_tags]
+            warnings.warn(
+                f"Missing mandatory tags: {tag_names}",
+                stacklevel=1,
+            )
+        return feature_view_object
 
     @usage.method_logger
     def get_feature_views(self, name: str) -> List[feature_view.FeatureView]:
