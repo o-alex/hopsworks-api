@@ -286,7 +286,7 @@ class SearchApi:
         fs = project.get_feature_store()
 
         # Search for feature views
-        fs_metas = search_api.feature_views("customer")
+        fv_metas = search_api.feature_views("customer")
 
         for fv_meta in fv_metas:
             print(f"Feature View: {fv_meta.name} v{fv_meta.version}")

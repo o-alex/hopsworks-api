@@ -2048,16 +2048,16 @@ class FeatureStore:
        result = fs.search("search-term", keyword_filter="ml")
 
        # Search with multiple keywords (array of strings)
-       result = fs.search.featurestore("search-term", keyword_filter=["ml", "production"])
+       result = fs.search("search-term", keyword_filter=["ml", "production"])
 
        # Search with tag filter as a single dictionary
-       result = fs.search.featurestore(
+       result = fs.search(
            "search-term",
            tag_filter={"name": "tag1", "key": "environment", "value": "production"}
        )
 
        # Search with tag filter as an array of dictionaries
-       result = fs.search.featurestore(
+       result = fs.search(
            "search-term",
            tag_filter=[
                {"name": "tag1", "key": "environment", "value": "production"},
@@ -2071,10 +2071,10 @@ class FeatureStore:
            TagSearchFilter(name="tag1", key="environment", value="production"),
            TagSearchFilter(name="tag2", key="version", value="v1.0")
        ]
-       result = fs.search.featurestore("search-term", tag_filter=tags)
+       result = fs.search("search-term", tag_filter=tags)
 
        # Search with both keyword_filter and tag_filter
-       result = fs.search.featurestore(
+       result = fs.search(
            "search-term",
            keyword_filter=["ml", "production"],
            tag_filter=tags
@@ -2207,7 +2207,7 @@ class FeatureStore:
         fs = project.get_feature_store()
 
         # Search for training datasets
-        td_metas = fs.training_datasets("model")
+        td_metas = fs.search_training_datasets("model")
 
         for td_meta in td_metas:
             print(f"Training Dataset: {td_meta.name} v{td_meta.version}")
@@ -2218,7 +2218,7 @@ class FeatureStore:
         """
         return self._search_api.training_datasets(search_term=search_term, tag_filter=tag_filter, keyword_filter=keyword_filter, offset=offset, limit=limit, global_search=global_search)
 
-    def features(
+    def search_features(
             self,
             search_term: str = None,
             keyword_filter: Optional[Union[str, List[str]]] = None,
@@ -2251,7 +2251,7 @@ class FeatureStore:
         fs = project.get_feature_store()
 
         # Search for features
-        features = search_api.features("age")
+        features = fs.search_features("age")
 
         for feature in features:
             print(f"Feature: {feature.name}")
