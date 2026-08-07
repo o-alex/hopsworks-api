@@ -97,6 +97,8 @@ class AppApi:
         environment: str = "python-app-pipeline",
         memory: int = 2048,
         cores: float = 1.0,
+        gpus: int = 0,
+        gpu_type: str | None = None,
         env_vars: dict[str, str] | None = None,
         app_kind: str = "STREAMLIT",
         entrypoint_command: str | None = None,
@@ -134,6 +136,9 @@ class AppApi:
             environment: Python environment name (default: "python-app-pipeline").
             memory: Memory in MB (default: 2048).
             cores: CPU cores (default: 1.0).
+            gpus: Number of GPUs.
+            gpu_type: GPU type to allocate, e.g. `"NVIDIA L4"`.
+                Requires DRA GPU allocation on the cluster; leave unset to accept any available GPU.
             env_vars: Per-runtime env vars applied when the app is started.
                 These override account-level env vars for this app's executions.
             app_kind: App kind to create. Defaults to ``STREAMLIT``.
@@ -211,15 +216,18 @@ class AppApi:
             if not app_path.startswith("hdfs://"):
                 app_path = "hdfs://" + app_path
 
+        resource_config = {
+            "memory": memory,
+            "cores": cores,
+            "gpus": gpus,
+            "shmSize": 128,
+        }
+        if gpu_type is not None:
+            resource_config["deviceRequest"] = {"deviceType": gpu_type}
         config = {
             "type": "pythonAppJobConfiguration",
             "appName": name,
-            "resourceConfig": {
-                "memory": memory,
-                "cores": cores,
-                "gpus": 0,
-                "shmSize": 128,
-            },
+            "resourceConfig": resource_config,
         }
         if app_path and not git_repo_app:
             config["appPath"] = app_path

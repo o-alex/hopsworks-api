@@ -32,6 +32,8 @@ class Resources:
         cores: Number of CPUs.
         memory: Memory (MB) resources.
         gpus: Number of GPUs.
+        gpu_type: GPU type to allocate, e.g. `"NVIDIA L4"`.
+            Requires DRA GPU allocation on the cluster; leave unset to accept any available GPU.
     """
 
     def __init__(
@@ -39,11 +41,13 @@ class Resources:
         cores: int,
         memory: int,
         gpus: int,
+        gpu_type: str | None = None,
         **kwargs,
     ):
         self._cores = cores
         self._memory = memory
         self._gpus = gpus
+        self._gpu_type = gpu_type
 
     @public
     def describe(self):
@@ -65,13 +69,21 @@ class Resources:
         kwargs["cores"] = util._extract_field_from_json(json_decamelized, "cores")
         kwargs["memory"] = util._extract_field_from_json(json_decamelized, "memory")
         kwargs["gpus"] = util._extract_field_from_json(json_decamelized, "gpus")
+        device_request = util._extract_field_from_json(
+            json_decamelized, "device_request"
+        )
+        if device_request:
+            kwargs["gpu_type"] = device_request.get("device_type")
         return kwargs
 
     def json(self):
         return json.dumps(self, cls=util.Encoder)
 
     def to_dict(self):
-        return {"cores": self._cores, "memory": self._memory, "gpus": self._gpus}
+        resources = {"cores": self._cores, "memory": self._memory, "gpus": self._gpus}
+        if self._gpu_type is not None:
+            resources["deviceRequest"] = {"deviceType": self._gpu_type}
+        return resources
 
     @public
     @property
@@ -103,8 +115,24 @@ class Resources:
     def gpus(self, gpus: int):
         self._gpus = gpus
 
+    @public
+    @property
+    def gpu_type(self):
+        """GPU type to allocate, e.g. `"NVIDIA L4"`.
+
+        Requires DRA GPU allocation on the cluster; `None` accepts any available GPU.
+        """
+        return self._gpu_type
+
+    @gpu_type.setter
+    def gpu_type(self, gpu_type: str | None):
+        self._gpu_type = gpu_type
+
     def __repr__(self):
-        return f"Resources(cores: {self._cores!r}, memory: {self._memory!r}, gpus: {self._gpus!r})"
+        return (
+            f"Resources(cores: {self._cores!r}, memory: {self._memory!r}, gpus: {self._gpus!r}, "
+            f"gpu_type: {self._gpu_type!r})"
+        )
 
 
 @public

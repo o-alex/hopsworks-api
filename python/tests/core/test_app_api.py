@@ -72,6 +72,25 @@ class TestAppApiCreate:
         assert "appPort" not in body
         assert "description" not in body
 
+    def test_create_streamlit_app_with_gpu_type(self, mock_client, api, mocker):
+        mocker.patch(
+            "hopsworks_common.core.app_api.util._convert_to_abs",
+            return_value="/Projects/demo/Resources/app.py",
+        )
+
+        api.create_app(
+            "my_app", app_path="Resources/app.py", gpus=1, gpu_type="NVIDIA L4"
+        )
+
+        body = json.loads(mock_client._send_request.call_args.kwargs["data"])
+        assert body["resourceConfig"] == {
+            "memory": 2048,
+            "cores": 1.0,
+            "gpus": 1,
+            "shmSize": 128,
+            "deviceRequest": {"deviceType": "NVIDIA L4"},
+        }
+
     def test_create_streamlit_app_requires_path(self, mock_client, api):
         with pytest.raises(ValueError, match="app_path is required"):
             api.create_app("my_app")
