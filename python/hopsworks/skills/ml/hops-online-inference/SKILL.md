@@ -301,6 +301,13 @@ predictor_resources = PredictorResources(
     requests=Resources(cores=1, memory=1024, gpus=0),  # minimum
     limits=Resources(cores=2, memory=4096, gpus=0),    # maximum
 )
+
+# On clusters with DRA GPU allocation, a specific GPU type can be requested
+# (set it on the limits side; leave gpu_type unset to accept any available GPU)
+gpu_predictor_resources = PredictorResources(
+    requests=Resources(cores=1, memory=1024, gpus=1),
+    limits=Resources(cores=2, memory=4096, gpus=1, gpu_type="NVIDIA L4"),
+)
 ```
 
 To cap a component's local disk, pass `disk` (GB) to its `limits`, e.g. `Resources(cores=2, memory=4096, gpus=0, disk=50)`; without it the disk is unlimited.

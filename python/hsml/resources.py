@@ -36,6 +36,8 @@ class Resources:
             Only valid on limits; the same amount is also requested.
             The model files are downloaded to the predictor's local disk, so a predictor's disk must fit them.
             On a cluster that gives vLLM deployments a volume for their model files, a vLLM predictor takes no disk.
+        gpu_type: GPU type to allocate, e.g. `"NVIDIA L4"`.
+            Requires DRA GPU allocation on the cluster; leave unset to accept any available GPU.
     """
 
     def __init__(
@@ -44,12 +46,14 @@ class Resources:
         memory: int,
         gpus: int,
         disk: int | None = None,
+        gpu_type: str | None = None,
         **kwargs,
     ):
         self._cores = cores
         self._memory = memory
         self._gpus = gpus
         self._disk = disk
+        self._gpu_type = gpu_type
 
     @public
     def describe(self):
@@ -75,6 +79,11 @@ class Resources:
         kwargs["disk"] = util._extract_field_from_json(
             json_decamelized, ["disk_gb", "disk"]
         )
+        device_request = util._extract_field_from_json(
+            json_decamelized, "device_request"
+        )
+        if device_request:
+            kwargs["gpu_type"] = device_request.get("device_type")
         return kwargs
 
     def json(self):
@@ -84,6 +93,8 @@ class Resources:
         resources = {"cores": self._cores, "memory": self._memory, "gpus": self._gpus}
         if self._disk is not None:
             resources["diskGb"] = self._disk
+        if self._gpu_type is not None:
+            resources["deviceRequest"] = {"deviceType": self._gpu_type}
         return resources
 
     @public
@@ -131,8 +142,24 @@ class Resources:
     def disk(self, disk: int | None):
         self._disk = disk
 
+    @public
+    @property
+    def gpu_type(self):
+        """GPU type to allocate, e.g. `"NVIDIA L4"`.
+
+        Requires DRA GPU allocation on the cluster; `None` accepts any available GPU.
+        """
+        return self._gpu_type
+
+    @gpu_type.setter
+    def gpu_type(self, gpu_type: str | None):
+        self._gpu_type = gpu_type
+
     def __repr__(self):
-        return f"Resources(cores: {self._cores!r}, memory: {self._memory!r}, gpus: {self._gpus!r}, disk: {self._disk!r})"
+        return (
+            f"Resources(cores: {self._cores!r}, memory: {self._memory!r}, gpus: {self._gpus!r}, "
+            f"disk: {self._disk!r}, gpu_type: {self._gpu_type!r})"
+        )
 
 
 @public

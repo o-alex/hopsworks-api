@@ -154,7 +154,49 @@ class TestResources:
         r = repr(resources.Resources(1, 1024, 0, disk=20))
 
         # Assert
-        assert r == "Resources(cores: 1, memory: 1024, gpus: 0, disk: 20)"
+        assert r == "Resources(cores: 1, memory: 1024, gpus: 0, disk: 20, gpu_type: None)"
+
+    def test_from_response_json_gpu_type(self):
+        # Arrange
+        json = {
+            "cores": 1,
+            "memory": 1024,
+            "gpus": 1,
+            "deviceRequest": {"deviceType": "NVIDIA L4"},
+        }
+
+        # Act
+        r = resources.Resources.from_response_json(json)
+
+        # Assert
+        assert r.gpus == 1
+        assert r.gpu_type == "NVIDIA L4"
+
+    def test_to_dict_gpu_type(self):
+        # Arrange
+        r = resources.Resources(cores=1, memory=1024, gpus=1, gpu_type="NVIDIA L4")
+
+        # Act
+        d = r.to_dict()
+
+        # Assert
+        assert d == {
+            "cores": 1,
+            "memory": 1024,
+            "gpus": 1,
+            "deviceRequest": {"deviceType": "NVIDIA L4"},
+        }
+
+    def test_to_dict_no_gpu_type(self):
+        # Arrange
+        r = resources.Resources(cores=1, memory=1024, gpus=1)
+
+        # Act
+        d = r.to_dict()
+
+        # Assert
+        assert "deviceRequest" not in d
+        assert r.gpu_type is None
 
     # ComponentResources
 
